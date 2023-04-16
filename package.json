@@ -9,7 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "ethers": "^6.3.0",
+    "@wagmi/core": "^0.10.9",
+    "@walletconnect/web3wallet": "^1.5.1",
+    "@web3modal/ethereum": "^2.3.0",
+    "@web3modal/html": "^2.3.0",
+    "dotenv": "^16.0.3",
+    "ethers": "^5.7.2",
     "vue": "^3.2.47"
   },
   "devDependencies": {
