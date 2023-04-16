@@ -1,4 +1,4 @@
-const contractsAddresses = {
+export const contractsAddresses = {
   97: "0x3a52C3e56765E188DF5a076Ba0d590a4A0fE42C4",
   11155111: "0x3a52C3e56765E188DF5a076Ba0d590a4A0fE42C4",
   80001: "0xcf03620dC6f350BefB0924DeC4Ee372C2097d0f8",
