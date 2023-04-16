@@ -1,7 +1,7 @@
 <script>
 import Core from '../src/core/core'
 import {mapState} from "vuex"
-import {  watchAccount, watchNetwork } from "@wagmi/core";
+import {  switchNetwork, watchAccount, watchNetwork } from "@wagmi/core";
 import { contractsAddresses }from '../config.js'
 import { ethers } from 'ethers';
 export default {
@@ -65,8 +65,9 @@ export default {
      
       if(Number(chainDesired) !== Number(this.chainId)){
         console.log({chainDesired, chainId:this.chainId});
-        alert("wrong network call")
-        return
+        await switchNetwork({
+          chainId: Number(chainDesired)
+        })
       }
       
       await this.$root.core.writeContract("mint",this.chainId, [this.currentAddress, ethers.utils.parseEther(amount.toString())])
@@ -74,8 +75,9 @@ export default {
     },
     async burn(chainDesired,amount){
       if(Number(chainDesired) !== Number(this.chainId)){
-        alert("wrong network call")
-        return
+        await switchNetwork({
+          chainId: Number(chainDesired)
+        })
       }
       await this.$root.core.writeContract("burn",this.chainId, [ethers.utils.parseEther(amount.toString())])
       await this.$root.core.fetchContractData(this.currentAddress)

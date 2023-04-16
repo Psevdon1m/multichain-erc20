@@ -83,15 +83,19 @@ export default class Core {
   }
 
   async writeContract(name, chainId, args = []) {
-    const config = await prepareWriteContract({
-      address: contractsAddresses[chainId],
-      abi: erc20Abi,
-      functionName: name,
-      args,
-    });
-    const data = await writeContract(config);
-    await data.wait(3);
-    console.log({ data });
+    try {
+      const config = await prepareWriteContract({
+        address: contractsAddresses[chainId],
+        abi: erc20Abi,
+        functionName: name,
+        args,
+      });
+      const data = await writeContract(config);
+      await data.wait(3);
+      console.log({ data });
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   parseContractData(dataSet) {
@@ -100,7 +104,9 @@ export default class Core {
 
     totalSupply.forEach((el, id) => {
       const chainId = this.chains[id].id;
-      const amount = ethers.utils.formatEther(el);
+      const amount = parseFloat(
+        Number(ethers.utils.formatEther(el)).toFixed(4)
+      );
       const current = {
         name: "MyToken",
         symbol: "MTK",
@@ -111,7 +117,9 @@ export default class Core {
 
     balanceOf.forEach((el, id) => {
       const chainId = this.chains[id].id;
-      const amount = ethers.utils.formatEther(el);
+      const amount = parseFloat(
+        Number(ethers.utils.formatEther(el)).toFixed(4)
+      );
       res[chainId] = { ...res[chainId], balanceOf: amount };
     });
     return res;
