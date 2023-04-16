@@ -1,8 +1,9 @@
 <script>
 import Core from '../src/core/core'
 import {mapState} from "vuex"
-import {  watchAccount } from "@wagmi/core";
+import {  watchAccount, watchNetwork } from "@wagmi/core";
 import { contractsAddresses }from '../config.js'
+import { ethers } from 'ethers';
 export default {
   data(){
     return{
@@ -13,7 +14,7 @@ export default {
     }
   },
   computed: {
-    ...mapState(['currentAddress', 'contractData']),
+    ...mapState(['currentAddress', 'contractData', 'chainId']),
     getSupportedChains(){
 
       return this.contractData ? Object.keys(this.contractData) : []
@@ -41,6 +42,15 @@ export default {
         this.$store.commit('setCurrentAddress', "")
       }
     })
+    watchNetwork((chainId) => {
+
+      if(chainId){
+        this.$store.commit('setChainId', chainId.chain.id)
+      }else {
+
+        this.$store.commit('setChainId', "")
+      }
+    })
     await this.$root.core.fetchContractData(this.currentAddress)
 
 
@@ -51,11 +61,24 @@ export default {
     console.log(this);
       await this.web3Modal.openModal()
     },
-    async mint(amount){
-      await this.$root.core.mintTokens(amount)
+    async mint(chainDesired,amount){
+     
+      if(Number(chainDesired) !== Number(this.chainId)){
+        console.log({chainDesired, chainId:this.chainId});
+        alert("wrong network call")
+        return
+      }
+      
+      await this.$root.core.writeContract("mint",this.chainId, [this.currentAddress, ethers.utils.parseEther(amount.toString())])
+      await this.$root.core.fetchContractData(this.currentAddress)
     },
-    async burn(amount){
-      await this.$root.core.burnTokens(amount)
+    async burn(chainDesired,amount){
+      if(Number(chainDesired) !== Number(this.chainId)){
+        alert("wrong network call")
+        return
+      }
+      await this.$root.core.writeContract("burn",this.chainId, [ethers.utils.parseEther(amount.toString())])
+      await this.$root.core.fetchContractData(this.currentAddress)
     },
 
   },
@@ -73,8 +96,8 @@ export default {
     <div class="button-row">
       <div v-for="chain in getSupportedChains" :key="chain">
         <div class="button-wrapper">
-          <button class="btn" @click="mint(100)">Mint tokens </button>
-          <button class="btn" @click="burn(100)">Burn Tokens </button>
+          <button class="btn" @click="mint(chain,100)">Mint tokens </button>
+          <button class="btn" @click="burn(chain,100)">Burn Tokens </button>
           <div class="chain-info">
             <ul>
               <li>ChainId: {{ chain }}</li>

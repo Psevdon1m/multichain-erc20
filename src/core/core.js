@@ -4,7 +4,13 @@ import {
   w3mProvider,
 } from "@web3modal/ethereum";
 import { Web3Modal } from "@web3modal/html";
-import { configureChains, createClient, readContracts } from "@wagmi/core";
+import {
+  configureChains,
+  createClient,
+  readContracts,
+  prepareWriteContract,
+  writeContract,
+} from "@wagmi/core";
 import {
   avalancheFuji,
   bscTestnet,
@@ -47,12 +53,17 @@ export default class Core {
   }
 
   async fetchContractData(currentAddress) {
-    let result = await Promise.all([
-      this.readContractData("totalSupply"),
-      this.readContractData("balanceOf", [currentAddress]),
-    ]);
-    result = this.parseContractData(result);
-    this.context.$store.commit("setContractData", result);
+    try {
+      let result = await Promise.all([
+        this.readContractData("totalSupply"),
+        this.readContractData("balanceOf", [currentAddress]),
+      ]);
+      result = this.parseContractData(result);
+      console.log("update store data");
+      this.context.$store.commit("setContractData", result);
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   async readContractData(name, args = []) {
@@ -69,6 +80,18 @@ export default class Core {
     const data = await readContracts({ contracts });
 
     return data;
+  }
+
+  async writeContract(name, chainId, args = []) {
+    const config = await prepareWriteContract({
+      address: contractsAddresses[chainId],
+      abi: erc20Abi,
+      functionName: name,
+      args,
+    });
+    const data = await writeContract(config);
+    await data.wait(3);
+    console.log({ data });
   }
 
   parseContractData(dataSet) {
