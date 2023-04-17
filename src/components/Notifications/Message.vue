@@ -20,7 +20,7 @@ import { mapMutations } from 'vuex';
     created() {
         this.timeout = setTimeout(() => {
                     this.remove_notification(this.notification);
-                }, 50000);
+                }, 5000);
         },
     methods: {
         ...mapMutations(["remove_notification"]),
