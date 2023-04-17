@@ -30,6 +30,12 @@ export default class Core {
     this.init();
   }
   async init() {
+    fantomTestnet["rpcUrls"]["default"]["http"] = [
+      "https://endpoints.omniatech.io/v1/fantom/testnet/public",
+    ];
+    fantomTestnet["rpcUrls"]["public"]["http"] = [
+      "https://endpoints.omniatech.io/v1/fantom/testnet/public",
+    ];
     this.chains = [
       avalancheFuji,
       bscTestnet,
