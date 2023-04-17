@@ -123,6 +123,7 @@ export default class Core {
       await this.fetchContractData(this.context.currentAddress);
     } catch (error) {
       console.log(error);
+
       this.context.$store.commit("push_notification", {
         type: "error",
         typeClass: "error",

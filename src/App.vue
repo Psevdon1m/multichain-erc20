@@ -1,13 +1,13 @@
 <script>
 import NotificationList from './components/Notifications/NotificationList.vue';
 import Core from '../src/core/core'
-import {mapState} from "vuex"
-import {  switchNetwork, watchAccount, watchNetwork } from "@wagmi/core";
-import { contractsAddresses }from '../config.js'
+import { mapState } from "vuex"
+import { switchNetwork, watchAccount, watchNetwork } from "@wagmi/core";
+import { contractsAddresses } from '../config.js'
 import { ethers } from 'ethers';
 export default {
-  data(){
-    return{
+  data() {
+    return {
       web3Modal: null,
       ethereumClient: null,
       address: null,
@@ -15,46 +15,46 @@ export default {
     }
   },
   components: {
-NotificationList
+    NotificationList
   },
   computed: {
-    ...mapState(['currentAddress', 'contractData', 'chainId', 'userCoinBalance',  'coinSymbol']),
-    getSupportedChains(){
+    ...mapState(['currentAddress', 'contractData', 'chainId', 'userCoinBalance', 'coinSymbol']),
+    getSupportedChains() {
 
       return this.contractData ? Object.keys(this.contractData) : []
     }
   },
-  async mounted(){
+  async mounted() {
 
     this.$root.core = new Core(this)
 
-    const {web3modal,ethereumClient} = this.$root.core
+    const { web3modal, ethereumClient } = this.$root.core
     this.web3Modal = web3modal
     this.ethereumClient = ethereumClient
     const accountData = ethereumClient.getAccount()
     const { chain } = ethereumClient.getNetwork()
 
-    if(chain){
+    if (chain) {
       this.$store.commit('setChainId', chain.id)
     }
-    accountData&&  accountData.isConnected && accountData.address ? this.$store.commit('setCurrentAddress', accountData.address) : this.$store.commit('setCurrentAddress', "0x0000000000000000000000000000000000000000")
-    const balance =await  ethereumClient.fetchBalance({address:this.currentAddress})
-    this.$store.commit('setUserCoinBalance',parseFloat(Number(balance.formatted).toFixed(4)))
+    accountData && accountData.isConnected && accountData.address ? this.$store.commit('setCurrentAddress', accountData.address) : this.$store.commit('setCurrentAddress', "0x0000000000000000000000000000000000000000")
+    const balance = await ethereumClient.fetchBalance({ address: this.currentAddress })
+    this.$store.commit('setUserCoinBalance', parseFloat(Number(balance.formatted).toFixed(4)))
     this.$store.commit('setCoinSymbol', balance.symbol)
     await this.$root.core.fetchContractData(this.currentAddress)
 
     // const balance = await ethereumClient.fetchBalance(this.address)
     // this.balance = balance
     watchAccount(async (account) => {
-      console.log(account);
-      if(account){
+
+      if (account) {
 
         this.$store.commit('setCurrentAddress', account.address)
-        const balance =await  ethereumClient.fetchBalance({address:this.currentAddress})
+        const balance = await ethereumClient.fetchBalance({ address: this.currentAddress })
         this.$store.commit('setUserCoinBalance', parseFloat(Number(balance.formatted).toFixed(4)))
         this.$store.commit('setCoinSymbol', balance.symbol)
         await this.$root.core.fetchContractData(this.currentAddress)
-      }else {
+      } else {
 
         this.$store.commit('setCurrentAddress', "0x0000000000000000000000000000000000000000")
         await this.$root.core.fetchContractData(this.currentAddress)
@@ -62,70 +62,93 @@ NotificationList
 
     })
     watchNetwork(async (chainId) => {
-      console.log(chainId);
-      if(chainId && chainId.chain){
-        this.$store.commit('setChainId', chainId.chain.id)
-        const balance =await  ethereumClient.fetchBalance({address:this.currentAddress})
-    this.$store.commit('setUserCoinBalance', parseFloat(Number(balance.formatted).toFixed(4)))
-    this.$store.commit('setCoinSymbol', balance.symbol)
 
-      }else {
+      if (chainId && chainId.chain) {
+        this.$store.commit('setChainId', chainId.chain.id)
+        const balance = await ethereumClient.fetchBalance({ address: this.currentAddress })
+        this.$store.commit('setUserCoinBalance', parseFloat(Number(balance.formatted).toFixed(4)))
+        this.$store.commit('setCoinSymbol', balance.symbol)
+
+      } else {
         this.$store.commit('setChainId', "")
       }
       await this.$root.core.fetchContractData(this.currentAddress)
     })
-   
+
 
 
 
   },
   methods: {
-    getChainName(chainId){
-      if(this.$root.core){
+    getChainName(chainId) {
+      if (this.$root.core) {
 
         return this.$root.core.chains.find(el => Number(el.id) === Number(chainId)).name
-        
+
       }
       return chainId
     },
-   async openModal(){
+    async openModal() {
 
       await this.web3Modal.openModal()
     },
-    async mint(chainDesired,amount){
-     
-      if(Number(chainDesired) !== Number(this.chainId)){
-        console.log({chainDesired, chainId:this.chainId});
-        await switchNetwork({
-          chainId: Number(chainDesired)
-        })
+    async mint(chainDesired, amount) {
+
+      if (Number(chainDesired) !== Number(this.chainId)) {
+
+        try {
+          await switchNetwork({
+            chainId: Number(chainDesired)
+          })
+        } catch (error) {
+          if (error.toString().includes("Connector not found")) {
+
+            this.$store.commit("push_notification", {
+              type: "error",
+              typeClass: "error",
+              message: `You need to connect your wallet first.`,
+            });
+            return;
+          }
+        }
       }
-      
-      await this.$root.core.writeContract("mint",this.chainId, [this.currentAddress, ethers.utils.parseEther(amount.toString())])
+
+      await this.$root.core.writeContract("mint", this.chainId, [this.currentAddress, ethers.utils.parseEther(amount.toString())])
 
     },
-    async burn(chainDesired,amount){
-      if(Number(chainDesired) !== Number(this.chainId)){
-        await switchNetwork({
-          chainId: Number(chainDesired)
-        })
+    async burn(chainDesired, amount) {
+      if (Number(chainDesired) !== Number(this.chainId)) {
+        try {
+          await switchNetwork({
+            chainId: Number(chainDesired)
+          })
+        } catch (error) {
+          if (error.toString().includes("Connector not found")) {
+
+            this.$store.commit("push_notification", {
+              type: "error",
+              typeClass: "error",
+              message: `You need to connect your wallet first.`,
+            });
+            return;
+          }
+        }
       }
-      await this.$root.core.writeContract("burn",this.chainId, [ethers.utils.parseEther(amount.toString())])
+      await this.$root.core.writeContract("burn", this.chainId, [ethers.utils.parseEther(amount.toString())])
 
     },
 
   },
- 
+
 }
 
 </script>
 
 <template>
-  
   <div class="container">
     <NotificationList />
     <div v-if="currentAddress && currentAddress !== '0x0000000000000000000000000000000000000000'" class="info-row">
-      <div  class="info-item">
+      <div class="info-item">
         <span class="info-label">Current Address:</span>
         <span class="info-value">{{ currentAddress }}</span>
       </div>
@@ -135,10 +158,11 @@ NotificationList
       </div>
       <div class="info-item">
         <span class="info-label">Current Balance:</span>
-        <span class="info-value">{{userCoinBalance}} {{ coinSymbol }}</span>
+        <span class="info-value">{{ userCoinBalance }} {{ coinSymbol }}</span>
       </div>
     </div>
-    <button class="connect-wallet-btn" @click="openModal()">{{ currentAddress && currentAddress !=='0x0000000000000000000000000000000000000000' ? "Wallet Details" : 'Connect Wallet' }}</button>
+    <button class="connect-wallet-btn" @click="openModal()">{{ currentAddress && currentAddress
+      !== '0x0000000000000000000000000000000000000000' ? "Wallet Details" : 'Connect Wallet' }}</button>
     <div class="button-row">
       <div v-for="chain in getSupportedChains" :key="chain">
         <div class="button-wrapper">
@@ -152,14 +176,13 @@ NotificationList
             </ul>
           </div>
           <div class="button-group">
-            <button class="btn mint-btn" @click="mint(chain,100)">Mint tokens</button>
-            <button class="btn burn-btn" @click="burn(chain,100)">Burn tokens</button>
+            <button class="btn mint-btn" @click="mint(chain, 100)">Mint tokens</button>
+            <button class="btn burn-btn" @click="burn(chain, 100)">Burn tokens</button>
           </div>
         </div>
       </div>
     </div>
   </div>
-
 </template>
 
 <style>
@@ -265,6 +288,7 @@ NotificationList
   background-color: #dc3545;
   color: #fff;
 }
+
 .btn:hover {
   opacity: 0.8;
 }
