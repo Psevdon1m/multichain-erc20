@@ -10,6 +10,7 @@ import {
   readContracts,
   prepareWriteContract,
   writeContract,
+  multicall,
 } from "@wagmi/core";
 import {
   avalancheFuji,
@@ -31,11 +32,13 @@ export default class Core {
   }
   async init() {
     fantomTestnet["rpcUrls"]["default"]["http"] = [
-      "https://endpoints.omniatech.io/v1/fantom/testnet/public",
+      "https://fantom-testnet.public.blastapi.io",
     ];
     fantomTestnet["rpcUrls"]["public"]["http"] = [
-      "https://endpoints.omniatech.io/v1/fantom/testnet/public",
+      "https://fantom-testnet.public.blastapi.io",
     ];
+    sepolia["rpcUrls"]["default"]["http"] = ["https://rpc2.sepolia.org"];
+    sepolia["rpcUrls"]["public"]["http"] = ["https://rpc2.sepolia.org"];
     this.chains = [
       avalancheFuji,
       bscTestnet,
@@ -43,12 +46,15 @@ export default class Core {
       sepolia,
       polygonMumbai,
     ];
+    this.defaultChains = [sepolia];
 
     const projectId = import.meta.env.VITE_PROJECT_ID;
 
-    const { provider } = configureChains(this.chains, [
-      w3mProvider({ projectId }),
-    ]);
+    const { provider } = configureChains(
+      this.chains,
+      [w3mProvider({ projectId })],
+      { defaultChains: this.defaultChains }
+    );
     const wagmiClient = createClient({
       autoConnect: true,
       connectors: w3mConnectors({ projectId, version: 1, chains: this.chains }),
@@ -58,6 +64,12 @@ export default class Core {
     this.web3modal = new Web3Modal({ projectId }, this.ethereumClient);
   }
 
+  fetchContractDataInLoop(currentAddress, interval = 10000) {
+    this.fetchContractDataInterval = setInterval(async () => {
+      await this.fetchContractData(currentAddress);
+    }, interval);
+  }
+
   async fetchContractData(currentAddress) {
     try {
       let result = await Promise.all([
@@ -65,7 +77,6 @@ export default class Core {
         this.readContractData("balanceOf", [currentAddress]),
       ]);
       result = this.parseContractData(result);
-      console.log("update store data");
       this.context.$store.commit("setContractData", result);
     } catch (error) {
       console.log(error);
@@ -83,6 +94,7 @@ export default class Core {
       contractObj["args"] = args;
       contracts.push(contractObj);
     }
+
     const data = await readContracts({ contracts });
 
     return data;
@@ -97,10 +109,25 @@ export default class Core {
         args,
       });
       const data = await writeContract(config);
-      await data.wait(3);
-      console.log({ data });
+      this.context.$store.commit("push_notification", {
+        type: "warning",
+        typeClass: "warning",
+        message: `Creating transaction...`,
+      });
+      await data.wait(2);
+      this.context.$store.commit("push_notification", {
+        type: "success",
+        typeClass: "success",
+        message: `Transaction was successfully processed`,
+      });
+      await this.fetchContractData(this.context.currentAddress);
     } catch (error) {
       console.log(error);
+      this.context.$store.commit("push_notification", {
+        type: "error",
+        typeClass: "error",
+        message: `Transaction failed`,
+      });
     }
   }
 
@@ -110,9 +137,13 @@ export default class Core {
 
     totalSupply.forEach((el, id) => {
       const chainId = this.chains[id].id;
-      const amount = parseFloat(
-        Number(ethers.utils.formatEther(el)).toFixed(4)
-      );
+      let amount;
+      if (el) {
+        amount = parseFloat(Number(ethers.utils.formatEther(el)).toFixed(4));
+      } else {
+        amount = 0;
+      }
+
       const current = {
         name: "MyToken",
         symbol: "MTK",
@@ -123,9 +154,12 @@ export default class Core {
 
     balanceOf.forEach((el, id) => {
       const chainId = this.chains[id].id;
-      const amount = parseFloat(
-        Number(ethers.utils.formatEther(el)).toFixed(4)
-      );
+      let amount;
+      if (el) {
+        amount = parseFloat(Number(ethers.utils.formatEther(el)).toFixed(4));
+      } else {
+        amount = 0;
+      }
       res[chainId] = { ...res[chainId], balanceOf: amount };
     });
     return res;
