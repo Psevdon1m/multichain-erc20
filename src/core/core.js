@@ -31,6 +31,14 @@ export default class Core {
     this.init();
   }
   async init() {
+    fantomTestnet["rpcUrls"]["default"]["http"] = [
+      "https://fantom-testnet.public.blastapi.io",
+    ];
+    fantomTestnet["rpcUrls"]["public"]["http"] = [
+      "https://fantom-testnet.public.blastapi.io",
+    ];
+    sepolia["rpcUrls"]["default"]["http"] = ["https://rpc2.sepolia.org"];
+    sepolia["rpcUrls"]["public"]["http"] = ["https://rpc2.sepolia.org"];
     this.chains = [
       avalancheFuji,
       bscTestnet,
@@ -58,21 +66,18 @@ export default class Core {
 
   fetchContractDataInLoop(currentAddress, interval = 10000) {
     this.fetchContractDataInterval = setInterval(async () => {
-      console.log("in interval");
       await this.fetchContractData(currentAddress);
     }, interval);
   }
 
   async fetchContractData(currentAddress) {
     try {
-      console.log("start", currentAddress);
       let result = await Promise.all([
         this.readContractData("totalSupply"),
         this.readContractData("balanceOf", [currentAddress]),
       ]);
       result = this.parseContractData(result);
       this.context.$store.commit("setContractData", result);
-      console.log("finish");
     } catch (error) {
       console.log(error);
     }
@@ -104,9 +109,25 @@ export default class Core {
         args,
       });
       const data = await writeContract(config);
+      this.context.$store.commit("push_notification", {
+        type: "warning",
+        typeClass: "warning",
+        message: `Creating transaction...`,
+      });
       await data.wait(2);
+      this.context.$store.commit("push_notification", {
+        type: "success",
+        typeClass: "success",
+        message: `Transaction was successfully processed`,
+      });
+      await this.fetchContractData(this.context.currentAddress);
     } catch (error) {
       console.log(error);
+      this.context.$store.commit("push_notification", {
+        type: "error",
+        typeClass: "error",
+        message: `Transaction failed`,
+      });
     }
   }
 
