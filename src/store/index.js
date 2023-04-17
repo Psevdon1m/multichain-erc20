@@ -2,8 +2,8 @@ import Vuex from "vuex";
 
 export default new Vuex.Store({
   state: {
-    currentAddress: "",
-    chainId: 97,
+    currentAddress: "0x0000000000000000000000000000000000000000",
+    chainId: "",
     contractData: null,
   },
   mutations: {

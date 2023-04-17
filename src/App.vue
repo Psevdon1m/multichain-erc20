@@ -28,37 +28,45 @@ export default {
     this.web3Modal = web3modal
     this.ethereumClient = ethereumClient
     const accountData = ethereumClient.getAccount()
-    
-    accountData&&  accountData.isConnected && accountData.address ? this.$store.commit('setCurrentAddress', accountData.address) : this.$store.commit('setCurrentAddress', "")
+    const { chain } = ethereumClient.getNetwork()
+    console.log(chain);
+    this.$store.commit('setChainId', chain.id)
+    accountData&&  accountData.isConnected && accountData.address ? this.$store.commit('setCurrentAddress', accountData.address) : this.$store.commit('setCurrentAddress', "0x0000000000000000000000000000000000000000")
+    await this.$root.core.fetchContractData(this.currentAddress)
+    this.$root.core.fetchContractDataInLoop(this.currentAddress);
     // const balance = await ethereumClient.fetchBalance(this.address)
     // this.balance = balance
-    watchAccount((account) => {
+    watchAccount(async (account) => {
 
       if(account){
 
         this.$store.commit('setCurrentAddress', account.address)
       }else {
 
-        this.$store.commit('setCurrentAddress', "")
+        this.$store.commit('setCurrentAddress', "0x0000000000000000000000000000000000000000")
       }
+      clearInterval(this.$root.core.fetchContractDataInterval)
+    this.$root.core.fetchContractDataInLoop(this.currentAddress);
     })
     watchNetwork((chainId) => {
-
-      if(chainId){
+      console.log(chainId);
+      if(chainId && chainId.chain){
         this.$store.commit('setChainId', chainId.chain.id)
-      }else {
 
+      }else {
         this.$store.commit('setChainId', "")
       }
+      clearInterval(this.$root.core.fetchContractDataInterval)
+    this.$root.core.fetchContractDataInLoop(this.currentAddress);
     })
-    await this.$root.core.fetchContractData(this.currentAddress)
+   
 
 
 
   },
   methods: {
    async openModal(){
-    console.log(this);
+
       await this.web3Modal.openModal()
     },
     async mint(chainDesired,amount){
@@ -71,7 +79,7 @@ export default {
       }
       
       await this.$root.core.writeContract("mint",this.chainId, [this.currentAddress, ethers.utils.parseEther(amount.toString())])
-      await this.$root.core.fetchContractData(this.currentAddress)
+
     },
     async burn(chainDesired,amount){
       if(Number(chainDesired) !== Number(this.chainId)){
@@ -80,7 +88,7 @@ export default {
         })
       }
       await this.$root.core.writeContract("burn",this.chainId, [ethers.utils.parseEther(amount.toString())])
-      await this.$root.core.fetchContractData(this.currentAddress)
+
     },
 
   },

@@ -10,6 +10,7 @@ import {
   readContracts,
   prepareWriteContract,
   writeContract,
+  multicall,
 } from "@wagmi/core";
 import {
   avalancheFuji,
@@ -37,12 +38,15 @@ export default class Core {
       sepolia,
       polygonMumbai,
     ];
+    this.defaultChains = [sepolia];
 
     const projectId = import.meta.env.VITE_PROJECT_ID;
 
-    const { provider } = configureChains(this.chains, [
-      w3mProvider({ projectId }),
-    ]);
+    const { provider } = configureChains(
+      this.chains,
+      [w3mProvider({ projectId })],
+      { defaultChains: this.defaultChains }
+    );
     const wagmiClient = createClient({
       autoConnect: true,
       connectors: w3mConnectors({ projectId, version: 1, chains: this.chains }),
@@ -52,15 +56,23 @@ export default class Core {
     this.web3modal = new Web3Modal({ projectId }, this.ethereumClient);
   }
 
+  fetchContractDataInLoop(currentAddress, interval = 10000) {
+    this.fetchContractDataInterval = setInterval(async () => {
+      console.log("in interval");
+      await this.fetchContractData(currentAddress);
+    }, interval);
+  }
+
   async fetchContractData(currentAddress) {
     try {
+      console.log("start", currentAddress);
       let result = await Promise.all([
         this.readContractData("totalSupply"),
         this.readContractData("balanceOf", [currentAddress]),
       ]);
       result = this.parseContractData(result);
-      console.log("update store data");
       this.context.$store.commit("setContractData", result);
+      console.log("finish");
     } catch (error) {
       console.log(error);
     }
@@ -77,6 +89,7 @@ export default class Core {
       contractObj["args"] = args;
       contracts.push(contractObj);
     }
+
     const data = await readContracts({ contracts });
 
     return data;
@@ -91,8 +104,7 @@ export default class Core {
         args,
       });
       const data = await writeContract(config);
-      await data.wait(3);
-      console.log({ data });
+      await data.wait(2);
     } catch (error) {
       console.log(error);
     }
@@ -104,9 +116,13 @@ export default class Core {
 
     totalSupply.forEach((el, id) => {
       const chainId = this.chains[id].id;
-      const amount = parseFloat(
-        Number(ethers.utils.formatEther(el)).toFixed(4)
-      );
+      let amount;
+      if (el) {
+        amount = parseFloat(Number(ethers.utils.formatEther(el)).toFixed(4));
+      } else {
+        amount = 0;
+      }
+
       const current = {
         name: "MyToken",
         symbol: "MTK",
@@ -117,9 +133,12 @@ export default class Core {
 
     balanceOf.forEach((el, id) => {
       const chainId = this.chains[id].id;
-      const amount = parseFloat(
-        Number(ethers.utils.formatEther(el)).toFixed(4)
-      );
+      let amount;
+      if (el) {
+        amount = parseFloat(Number(ethers.utils.formatEther(el)).toFixed(4));
+      } else {
+        amount = 0;
+      }
       res[chainId] = { ...res[chainId], balanceOf: amount };
     });
     return res;
